@@ -18,7 +18,7 @@ const IndicatorRank = () => {
       <ListGroup>
         {data.map((item, index) => (
           <ListGroup.Item key={index}>
-            <h4>{item.rank}. {item.strategy}</h4>
+            <h4><span className="text-muted">{item.rank}.</span> {item.strategy}</h4>
           </ListGroup.Item>
         ))}
       </ListGroup>
