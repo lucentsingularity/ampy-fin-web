@@ -4,9 +4,13 @@ This provides a simple web structure for reporting on AmpyFin
 
 ## Create Env
 
-You need to specify the MongoDB URI as an ENV variable
+You need to specify the MongoDB URI as an ENV variable.
 
-`MONGODB_URI`
+This would usually be done by creating a `.env.local` file with a key
+
+`MONGODB_URI='YOURMONGDBURI'`
+
+@see `sample.env`
 
 Then run your server
 
