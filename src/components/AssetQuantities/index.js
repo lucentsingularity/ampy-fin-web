@@ -49,7 +49,7 @@ const AssetItem = ({ item, assetLimits, openPositions }) => {
   let datasets = [
     {
       label: item.symbol,
-      data: closePrices,
+      data: closePrices.reverse(),
       fill: false,
       borderColor: 'rgb(75, 192, 192)',
       tension: 0.1,
