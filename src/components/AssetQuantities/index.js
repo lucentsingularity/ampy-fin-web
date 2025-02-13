@@ -9,26 +9,33 @@ import dynamic from 'next/dynamic'
 import Row from 'react-bootstrap/Row'
 import Col from 'react-bootstrap/Col'
 import { useSettings } from '@/contexts/settings'
-import 'chart.js/auto'
-import { elements } from 'chart.js/auto'
-const Line = dynamic(() => import('react-chartjs-2').then((mod) => mod.Line), {
-  ssr: false,
-})
-// Import ChartJS line chart
+import annotationPlugin from 'chartjs-plugin-annotation'
+import 'chartjs-adapter-moment'
 
+import { Line } from 'react-chartjs-2'
+import { Chart as ChartJS, LineElement, PointElement, CategoryScale, LinearScale, TimeScale } from 'chart.js'
 
-const AssetItem = ({ item, assetLimits, openPositions }) => {
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  TimeScale,
+  annotationPlugin,
+)
+const AssetItem = ({ item, assetLimits, openPositions, trades }) => {
 
   const { timeframe, timeframes, chartStopLoss } = useSettings()
 
   const limit = assetLimits?.find(limit => limit.symbol === item.symbol) || null
   const openPosition = openPositions?.find(position => position.symbol === item.symbol) || null
+  const allTrades = trades?.filter(trade => trade.symbol === item.symbol) || []
 
   const tfParams = timeframes[timeframe]
 
   const { data: ticks, error: ticksError } = useSWR(`/api/alpaca/latest_ticks/${item.symbol}?timeframe=${tfParams?.interval}&limit=${tfParams?.limit}`, fetcher)
 
-  const closePrices = ticks?.bars[item.symbol]?.map(tick => tick.c) || []
+  const closePrices = ticks?.bars[item.symbol]?.map(tick => ({ t: tick.t, c: tick.c })) || []
 
   const stopLossPrice = limit?.stop_loss_price
   const takeProfitPrice = limit?.take_profit_price
@@ -37,7 +44,7 @@ const AssetItem = ({ item, assetLimits, openPositions }) => {
   const stopLossPoints = Array(closePrices.length).fill(stopLossPrice)
   const takeProfitPoints = Array(closePrices.length).fill(takeProfitPrice)
 
-  const currentPrice = closePrices[0]
+  const currentPrice = closePrices[0]?.c
   const currentNet = (currentPrice - avgEntryPrice) * item.quantity
   const currentNetPercent = ((currentPrice - avgEntryPrice) / avgEntryPrice) * 100
 
@@ -49,7 +56,7 @@ const AssetItem = ({ item, assetLimits, openPositions }) => {
   let datasets = [
     {
       label: item.symbol,
-      data: closePrices.reverse(),
+      data: closePrices.map(cp => cp.c).reverse(),
       fill: false,
       borderColor: 'rgb(75, 192, 192)',
       tension: 0.1,
@@ -57,24 +64,72 @@ const AssetItem = ({ item, assetLimits, openPositions }) => {
     }
   ]
 
-  if (chartStopLoss) {
-    datasets.push({
-      label: 'Stop Loss',
-      data: stopLossPoints,
-      fill: false,
-      borderColor: 'rgb(255, 99, 132)',
-      tension: 0.1,
-      pointRadius: 0,
-    })
-    datasets.push({
-      label: 'Take Profit',
-      data: takeProfitPoints,
-      fill: false,
-      borderColor: 'rgb(54, 162, 235)',
-      tension: 0.1,
-      pointRadius: 0,
-    })
+  let chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        display: false
+      },
+      annotation: {
+        annotations: {}
+      }
+    },
+    scales: {
+      x: {
+        type: 'time',
+      }
+    }
   }
+
+  if (chartStopLoss) {
+    chartOptions.plugins.annotation.annotations.stopLoss = {
+      type: 'line',
+      yMin: stopLossPrice,
+      yMax: stopLossPrice,
+      borderColor: 'rgb(255, 99, 132)',
+      borderWidth: 2,
+      label: {
+        content: 'Stop Loss',
+        enabled: true,
+        position: 'top'
+      }
+    }
+    chartOptions.plugins.annotation.annotations.takeProfit = {
+      type: 'line',
+      yMin: takeProfitPrice,
+      yMax: takeProfitPrice,
+      borderColor: 'rgb(54, 162, 235)',
+      borderWidth: 2,
+      label: {
+        content: 'Take Profit',
+        enabled: true,
+        position: 'top'
+      }
+    }
+  }
+
+  allTrades.forEach((trade, index) => {
+    // HACK: trade.time is in ISO format with Z at the end incorrectly. This is an upstream problem with AmpyFin
+    // We assume that the trade and the web client are on the same system or at least in the same TZ.
+    const tradeDate = new Date(trade.time.replace('Z', ''))
+    const tradeQuantity = trade.qty
+
+    const color = trade.side === 'BUY' ? 'rgb(61, 200, 135)' : 'rgb(255, 99, 132)'
+
+    chartOptions.plugins.annotation.annotations[`trade${index}`] = {
+      type: 'line',
+      scaleID: 'x',
+      value: tradeDate,
+      borderColor: color,
+      borderWidth: 2,
+      label: {
+        content: `${trade.side} (${tradeQuantity})`,
+        display: true,
+        position: 'start'
+      }
+    }
+  })
 
   return (
     <ListGroup.Item>
@@ -95,26 +150,10 @@ const AssetItem = ({ item, assetLimits, openPositions }) => {
         </Col>
         <Col>
           <Line data={{
-            labels: closePrices.map((_, index) => index),
+            labels: closePrices.map(cp => new Date(cp.t)).reverse(),
             datasets: datasets,
           }}
-            options={{
-              responsive: true,
-              maintainAspectRatio: false,
-              plugins: {
-                legend: {
-                  display: false
-                },
-              },
-              scales: {
-                x: {
-                  display: false,
-                  ticks: {
-                    display: false //this will remove only the label
-                  }
-                }
-              }
-            }} />
+            options={chartOptions} />
         </Col>
       </Row>
     </ListGroup.Item>
@@ -125,10 +164,12 @@ const AssetQuantities = () => {
   const { data: assetQuantities, error: assetQuantitiesError } = useSWR('/api/trades/asset_quantities', fetcher)
   const { data: assetLimit, error: assetLimitError } = useSWR('/api/trades/assets_limit', fetcher)
   const { data: openPositions, error: openPositionsError } = useSWR('/api/alpaca/open_positions', fetcher)
+  const { data: trades, error: tradesError } = useSWR('/api/trades/paper', fetcher)
 
   if (assetQuantitiesError) return <div>Failed to load asset quantities</div>
   if (assetLimitError) return <div>Failed to load asset limit</div>
   if (openPositionsError) return <div>Failed to load open positions</div>
+  if (tradesError) return <div>Failed to load trades</div>
 
   if (!assetQuantities) return <div>Loading...</div>
 
@@ -136,7 +177,7 @@ const AssetQuantities = () => {
     <Row>
       <ListGroup>
         {assetQuantities.map((item, index) => (
-          <AssetItem key={index} item={item} assetLimits={assetLimit} openPositions={openPositions} />
+          <AssetItem key={index} item={item} assetLimits={assetLimit} openPositions={openPositions} trades={trades} />
         ))}
       </ListGroup>
     </Row>
