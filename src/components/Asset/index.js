@@ -1,16 +1,15 @@
 'use client'
 
-import { useState } from 'react'
 import useSWR from 'swr'
 import fetcher from '@/lib/fetcher'
 import Table from 'react-bootstrap/Table'
 import ListGroup from 'react-bootstrap/ListGroup'
-import dynamic from 'next/dynamic'
 import Row from 'react-bootstrap/Row'
 import Col from 'react-bootstrap/Col'
 import { useSettings } from '@/contexts/settings'
 import annotationPlugin from 'chartjs-plugin-annotation'
 import 'chartjs-adapter-moment'
+import styles from './asset.module.scss'
 
 import { Line } from 'react-chartjs-2'
 import { Chart as ChartJS, LineElement, PointElement, CategoryScale, LinearScale, TimeScale } from 'chart.js'
@@ -23,7 +22,7 @@ ChartJS.register(
   TimeScale,
   annotationPlugin,
 )
-const AssetItem = ({ item, assetLimits, openPositions, trades }) => {
+const Asset = ({ item, assetLimits, openPositions, trades }) => {
 
   const { timeframe, timeframes, chartStopLoss } = useSettings()
 
@@ -137,16 +136,34 @@ const AssetItem = ({ item, assetLimits, openPositions, trades }) => {
         <Col>
           <h4>
             {currentNet > 0 ? '🤑' : '😢'}
+            {' '}
             {item.symbol}
             <span className="ms-3 fs-5">
               {moneyFormatter.format(currentNet)} ({currentNetPercent.toFixed(2)}%)
             </span>
           </h4>
-          <p>Quantity: {item.quantity}</p>
-          <p>Current Price: {moneyFormatter.format(currentPrice)}</p>
-          <p>Average Entry Price: {moneyFormatter.format(avgEntryPrice)}</p>
-          <p>Stop Loss: {stopLossPrice}</p>
-          <p>Take Profit: {takeProfitPrice}</p>
+          <Table size="sm" className={styles.detailTable}>
+            <tr>
+              <td>Quantity</td>
+              <td>{item.quantity}</td>
+            </tr>
+            <tr>
+              <td>Current Price</td>
+              <td>{moneyFormatter.format(currentPrice)}</td>
+            </tr>
+            <tr>
+              <td>Average Entry Price</td>
+              <td>{moneyFormatter.format(avgEntryPrice)}</td>
+            </tr>
+            <tr>
+              <td>Stop Loss</td>
+              <td>{moneyFormatter.format(stopLossPrice)}</td>
+            </tr>
+            <tr>
+              <td>Take Profit</td>
+              <td>{moneyFormatter.format(takeProfitPrice)}</td>
+            </tr>
+          </Table>
         </Col>
         <Col>
           <Line data={{
@@ -160,28 +177,4 @@ const AssetItem = ({ item, assetLimits, openPositions, trades }) => {
   )
 }
 
-const AssetQuantities = () => {
-  const { data: assetQuantities, error: assetQuantitiesError } = useSWR('/api/trades/asset_quantities', fetcher)
-  const { data: assetLimit, error: assetLimitError } = useSWR('/api/trades/assets_limit', fetcher)
-  const { data: openPositions, error: openPositionsError } = useSWR('/api/alpaca/open_positions', fetcher)
-  const { data: trades, error: tradesError } = useSWR('/api/trades/paper', fetcher)
-
-  if (assetQuantitiesError) return <div>Failed to load asset quantities</div>
-  if (assetLimitError) return <div>Failed to load asset limit</div>
-  if (openPositionsError) return <div>Failed to load open positions</div>
-  if (tradesError) return <div>Failed to load trades</div>
-
-  if (!assetQuantities) return <div>Loading...</div>
-
-  return (
-    <Row>
-      <ListGroup>
-        {assetQuantities.map((item, index) => (
-          <AssetItem key={index} item={item} assetLimits={assetLimit} openPositions={openPositions} trades={trades} />
-        ))}
-      </ListGroup>
-    </Row>
-  )
-}
-
-export default AssetQuantities
+export default Asset
