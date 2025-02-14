@@ -34,3 +34,7 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 AmpyFin Web follows the same version as AmpyFin to ensure compatibility with any DB changes.
 
+## Contributing
+
+Please fork and use a feature branch. Then submit a PR from the feature branch fork.
+
