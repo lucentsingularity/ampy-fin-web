@@ -33,6 +33,7 @@ const Asset = ({ item, assetLimits, openPositions, trades }) => {
   const tfParams = timeframes[timeframe]
 
   const { data: ticks, error: ticksError } = useSWR(`/api/alpaca/latest_ticks/${item.symbol}?timeframe=${tfParams?.interval}&limit=${tfParams?.limit}`, fetcher)
+  const { data: latestTick, error: latestBarsError } = useSWR(`/api/alpaca/latest_tick/${item.symbol}`, fetcher)
 
   const closePrices = ticks?.bars[item.symbol]?.map(tick => ({ t: tick.t, c: tick.c })) || []
 
@@ -43,7 +44,7 @@ const Asset = ({ item, assetLimits, openPositions, trades }) => {
   const stopLossPoints = Array(closePrices.length).fill(stopLossPrice)
   const takeProfitPoints = Array(closePrices.length).fill(takeProfitPrice)
 
-  const currentPrice = closePrices[0]?.c
+  const currentPrice = latestTick?.c
   const currentNet = (currentPrice - avgEntryPrice) * item.quantity
   const currentNetPercent = ((currentPrice - avgEntryPrice) / avgEntryPrice) * 100
 
