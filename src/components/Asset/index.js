@@ -122,11 +122,6 @@ const Asset = ({ item, assetLimits, openPositions, trades }) => {
       value: tradeDate,
       borderColor: color,
       borderWidth: 2,
-      label: {
-        content: `${trade.side} (${tradeQuantity})`,
-        display: true,
-        position: 'start'
-      }
     }
   })
 
@@ -143,26 +138,28 @@ const Asset = ({ item, assetLimits, openPositions, trades }) => {
             </span>
           </h4>
           <Table size="sm" className={styles.detailTable}>
-            <tr>
-              <td>Quantity</td>
-              <td>{item.quantity}</td>
-            </tr>
-            <tr>
-              <td>Current Price</td>
-              <td>{moneyFormatter.format(currentPrice)}</td>
-            </tr>
-            <tr>
-              <td>Average Entry Price</td>
-              <td>{moneyFormatter.format(avgEntryPrice)}</td>
-            </tr>
-            <tr>
-              <td>Stop Loss</td>
-              <td>{moneyFormatter.format(stopLossPrice)}</td>
-            </tr>
-            <tr>
-              <td>Take Profit</td>
-              <td>{moneyFormatter.format(takeProfitPrice)}</td>
-            </tr>
+            <tbody>
+              <tr>
+                <td>Quantity</td>
+                <td>{item.quantity}</td>
+              </tr>
+              <tr>
+                <td>Current Price</td>
+                <td>{moneyFormatter.format(currentPrice)}</td>
+              </tr>
+              <tr>
+                <td>Average Entry Price</td>
+                <td>{moneyFormatter.format(avgEntryPrice)}</td>
+              </tr>
+              <tr>
+                <td>Stop Loss</td>
+                <td>{moneyFormatter.format(stopLossPrice)}</td>
+              </tr>
+              <tr>
+                <td>Take Profit</td>
+                <td>{moneyFormatter.format(takeProfitPrice)}</td>
+              </tr>
+            </tbody>
           </Table>
         </Col>
         <Col>
